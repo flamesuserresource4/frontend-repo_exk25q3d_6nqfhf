@@ -1,9 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Trash2, Plus } from 'lucide-react';
+import { Send, Trash2, Plus, Cloud, CloudOff } from 'lucide-react';
 
 const LS_KEY = 'flareos_chats';
+const DID_KEY = 'flareos_device';
+const API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
-function loadChats() {
+function getDeviceId() {
+  let id = localStorage.getItem(DID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DID_KEY, id);
+  }
+  return id;
+}
+
+function loadChatsLocal() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -12,27 +23,46 @@ function loadChats() {
   }
 }
 
-function saveChats(chats) {
+function saveChatsLocal(chats) {
   localStorage.setItem(LS_KEY, JSON.stringify(chats));
 }
 
 export default function ChatCenter() {
-  const [chats, setChats] = useState(loadChats());
+  const [chats, setChats] = useState(loadChatsLocal());
   const [activeId, setActiveId] = useState(chats[0]?.id || null);
   const [input, setInput] = useState('');
+  const [online, setOnline] = useState(true);
   const inputRef = useRef(null);
+  const clientId = getDeviceId();
 
   useEffect(() => {
-    saveChats(chats);
+    saveChatsLocal(chats);
   }, [chats]);
 
+  // Initial sync from backend
   useEffect(() => {
-    if (chats.length && !activeId) setActiveId(chats[0].id);
-  }, [chats, activeId]);
+    (async () => {
+      try {
+        const res = await fetch(`${API}/api/chats/${clientId}`);
+        if (!res.ok) throw new Error('failed');
+        const data = await res.json();
+        const threads = data.threads || [];
+        setChats(threads);
+        if (threads.length) setActiveId(threads[0].id);
+        setOnline(true);
+      } catch (e) {
+        setOnline(false);
+      }
+    })();
+  }, [clientId]);
 
   const activeChat = useMemo(() => chats.find(c => c.id === activeId) || null, [chats, activeId]);
 
-  function newChat() {
+  async function newChat() {
+    if (input.trim()) {
+      await sendMessage();
+      return;
+    }
     const id = crypto.randomUUID();
     const chat = { id, title: 'New Chat', messages: [], createdAt: Date.now() };
     setChats([chat, ...chats]);
@@ -40,27 +70,53 @@ export default function ChatCenter() {
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     if (!input.trim()) return;
-    if (!activeChat) {
-      newChat();
-      return;
+    try {
+      const res = await fetch(`${API}/api/chats/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, thread_id: activeId || null, message: input.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.thread) {
+        const t = data.thread;
+        setChats(prev => {
+          const without = prev.filter(c => c.id !== t.id);
+          return [t, ...without];
+        });
+        setActiveId(t.id);
+        setInput('');
+        setOnline(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+        return;
+      }
+      throw new Error('send failed');
+    } catch (e) {
+      // Fallback local echo
+      const userMsg = { role: 'user', content: input.trim(), ts: Date.now() };
+      const aiMsg = { role: 'assistant', content: `Echo: ${input.trim()}`, ts: Date.now() };
+      if (!activeChat) {
+        const id = crypto.randomUUID();
+        const chat = { id, title: input.trim().slice(0, 30) || 'New Chat', messages: [userMsg, aiMsg], createdAt: Date.now() };
+        setChats([chat, ...chats]);
+        setActiveId(id);
+      } else {
+        setChats(prev => prev.map(c => c.id === activeId ? { ...c, title: c.messages.length === 0 ? input.trim().slice(0,30) : c.title, messages: [...c.messages, userMsg, aiMsg] } : c));
+      }
+      setInput('');
+      setOnline(false);
     }
-    const userMsg = { role: 'user', content: input.trim(), ts: Date.now() };
-    const aiMsg = { role: 'assistant', content: `Echo: ${input.trim()}` , ts: Date.now() };
-    setChats(prev => prev.map(c => c.id === activeId ? {
-      ...c,
-      title: c.messages.length === 0 ? input.trim().slice(0, 30) : c.title,
-      messages: [...c.messages, userMsg, aiMsg]
-    } : c));
-    setInput('');
-    setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function deleteChat(id) {
-    const next = chats.filter(c => c.id !== id);
-    setChats(next);
-    if (activeId === id) setActiveId(next[0]?.id || null);
+  async function deleteChat(id) {
+    setChats(chats.filter(c => c.id !== id));
+    if (activeId === id) setActiveId(null);
+    try {
+      await fetch(`${API}/api/chats/${clientId}/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      // ignore
+    }
   }
 
   return (
@@ -71,7 +127,7 @@ export default function ChatCenter() {
             <Plus size={14} /> New Chat
           </button>
         </div>
-        <div className="text-xs text-white/50">Chats: {chats.length}</div>
+        <div className="text-xs text-white/60 flex items-center gap-2">{online ? <Cloud size={14} className="text-emerald-400"/> : <CloudOff size={14} className="text-amber-400"/>}{online ? 'Online' : 'Offline (local)'}</div>
       </div>
 
       <div className="grid grid-cols-12">
@@ -84,7 +140,7 @@ export default function ChatCenter() {
                 <li key={c.id} className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer ${activeId === c.id ? 'bg-white/5' : 'hover:bg-white/5'}`}>
                   <button className="flex-1 text-left" onClick={() => setActiveId(c.id)}>
                     <div className="truncate">{c.title || 'Untitled'}</div>
-                    <div className="text-[11px] text-white/40">{new Date(c.createdAt).toLocaleString()}</div>
+                    <div className="text-[11px] text-white/40">{new Date(c.createdAt || Date.now()).toLocaleString()}</div>
                   </button>
                   <button onClick={() => deleteChat(c.id)} className="text-white/50 hover:text-white">
                     <Trash2 size={14} />
@@ -100,10 +156,10 @@ export default function ChatCenter() {
             <div className="h-full grid place-items-center text-white/50 text-sm">Start a chat to begin.</div>
           ) : (
             <div className="p-4 space-y-3">
-              {activeChat.messages.length === 0 && (
+              {activeChat.messages?.length === 0 && (
                 <div className="text-white/40 text-sm">Send a message to start the conversation.</div>
               )}
-              {activeChat.messages.map((m, idx) => (
+              {activeChat.messages?.map((m, idx) => (
                 <div key={idx} className={`px-3 py-2 rounded-lg text-sm max-w-prose ${m.role === 'user' ? 'bg-white/10 ml-auto' : 'bg-white/5'}`}>
                   <div className="text-[11px] text-white/40 mb-1">{m.role}</div>
                   <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>

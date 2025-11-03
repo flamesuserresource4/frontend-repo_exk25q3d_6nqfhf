@@ -4,10 +4,10 @@ import { Rocket, Github } from 'lucide-react';
 
 export default function Hero3D() {
   return (
-    <section className="relative w-full h-screen overflow-hidden bg-black text-white">
+    <section className="relative w-full h-[70vh] md:h-screen overflow-hidden bg-black text-white">
       <div className="absolute inset-0">
-        <Spline 
-          scene="https://prod.spline.design/7m4PRZ7kg6K1jPfF/scene.splinecode" 
+        <Spline
+          scene="https://prod.spline.design/4cHQr84zOGAHOehh/scene.splinecode"
           style={{ width: '100%', height: '100%' }}
         />
       </div>
@@ -19,22 +19,22 @@ export default function Hero3D() {
       <div className="relative z-10 flex h-full items-center">
         <div className="mx-auto max-w-6xl px-6 md:px-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80 backdrop-blur">
-            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            Live Prototype • FlareOS
+            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-violet-400" />
+            AI Voice Agent Aura • Live 3D
           </div>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight sm:text-6xl md:text-7xl">
-            FlareOS — Vibe Code Full-Stack Apps
+            FlareOS — AI Coder Workspace
           </h1>
           <p className="mt-4 max-w-2xl text-white/70 md:text-lg">
-            Ignite your ideas into code. Your API keys, unlimited builds, total control. Open, free, and yours.
+            Local-first chat, code, memory, and database modeling. Optional GitHub login. Real API integration.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a
-              href="#dashboard"
-              className="group inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 font-medium text-black transition hover:bg-emerald-400"
+              href="#app"
+              className="group inline-flex items-center gap-2 rounded-lg bg-white text-black px-5 py-3 font-medium transition hover:bg-white/90"
             >
               <Rocket className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              Start Free
+              Launch Workspace
             </a>
             <a
               href="https://github.com/" target="_blank" rel="noreferrer"

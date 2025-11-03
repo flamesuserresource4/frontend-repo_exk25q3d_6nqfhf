@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Cloud, CloudOff } from 'lucide-react';
 
 const MEM_KEY = 'flareos_memory';
+const DID_KEY = 'flareos_device';
+const API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+
+function getDeviceId() {
+  let id = localStorage.getItem(DID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DID_KEY, id);
+  }
+  return id;
+}
 
 function loadMemory() {
   try {
@@ -20,29 +31,66 @@ export default function MemoryManager() {
   const [items, setItems] = useState(loadMemory());
   const [keyName, setKeyName] = useState('');
   const [value, setValue] = useState('');
+  const [online, setOnline] = useState(true);
+  const clientId = getDeviceId();
 
   useEffect(() => {
     saveMemory(items);
   }, [items]);
 
-  function addItem() {
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/api/memory/${clientId}`);
+        if (!res.ok) throw new Error('failed');
+        const data = await res.json();
+        setItems(data.items || []);
+        setOnline(true);
+      } catch (e) {
+        setOnline(false);
+      }
+    })();
+  }, [clientId]);
+
+  async function addItem() {
     if (!keyName.trim()) return;
-    const exists = items.find(i => i.key === keyName.trim());
-    const next = exists
-      ? items.map(i => i.key === keyName.trim() ? { ...i, value } : i)
-      : [{ key: keyName.trim(), value, ts: Date.now() }, ...items];
-    setItems(next);
+    const body = { client_id: clientId, key: keyName.trim(), value };
+    try {
+      const res = await fetch(`${API}/api/memory`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (res.ok && data.item) {
+        const next = [data.item, ...items.filter(i => i.key !== data.item.key)];
+        setItems(next);
+        setOnline(true);
+      } else {
+        throw new Error('save failed');
+      }
+    } catch (e) {
+      const exists = items.find(i => i.key === keyName.trim());
+      const next = exists ? items.map(i => i.key === keyName.trim() ? { ...i, value } : i) : [{ key: keyName.trim(), value, ts: Date.now() }, ...items];
+      setItems(next);
+      setOnline(false);
+    }
     setKeyName('');
     setValue('');
   }
 
-  function removeItem(key) {
+  async function removeItem(key) {
     setItems(items.filter(i => i.key !== key));
+    try {
+      await fetch(`${API}/api/memory/${clientId}/${encodeURIComponent(key)}`, { method: 'DELETE' });
+      setOnline(true);
+    } catch (e) {
+      setOnline(false);
+    }
   }
 
   return (
     <div className="h-full grid grid-rows-[auto_auto_1fr] bg-black/20 rounded-xl ring-1 ring-white/10 overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 text-sm text-white/70">Persistent Memory</div>
+      <div className="px-4 py-3 border-b border-white/10 text-sm text-white/70 flex items-center gap-2">
+        Persistent Memory
+        {online ? <Cloud size={14} className="text-emerald-400 ml-2"/> : <CloudOff size={14} className="text-amber-400 ml-2"/>}
+      </div>
 
       <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-3 border-b border-white/10">
         <input
