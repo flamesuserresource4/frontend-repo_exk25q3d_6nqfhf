@@ -7,7 +7,7 @@ export default function Hero3D() {
     <section className="relative w-full h-screen overflow-hidden bg-black text-white">
       <div className="absolute inset-0">
         <Spline 
-          scene="https://prod.spline.design/EF7JOSsHLk16Tlw9/scene.splinecode" 
+          scene="https://prod.spline.design/7m4PRZ7kg6K1jPfF/scene.splinecode" 
           style={{ width: '100%', height: '100%' }}
         />
       </div>
@@ -23,10 +23,10 @@ export default function Hero3D() {
             Live Prototype • FlareOS
           </div>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight sm:text-6xl md:text-7xl">
-            Build in a 3D AI Workspace
+            FlareOS — Vibe Code Full-Stack Apps
           </h1>
           <p className="mt-4 max-w-2xl text-white/70 md:text-lg">
-            Create agents, code in an integrated IDE, and command systems in an immersive, reactive environment. Powered by your own AI keys.
+            Ignite your ideas into code. Your API keys, unlimited builds, total control. Open, free, and yours.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a
@@ -34,7 +34,7 @@ export default function Hero3D() {
               className="group inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-3 font-medium text-black transition hover:bg-emerald-400"
             >
               <Rocket className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              Launch Workspace
+              Start Free
             </a>
             <a
               href="https://github.com/" target="_blank" rel="noreferrer"
